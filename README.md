@@ -85,15 +85,15 @@ Perfect for data analysts, researchers, students, or anyone interested in US dem
 
 <br>
 
-mermaid
+```mermaid
 graph LR
-A[🗺️ Interactive Map] --> B[📊 Data Charts]
-B --> C[📋 Analysis Report]
-C --> A
-style A fill:#0071E3,stroke:#fff,color:#fff
-style B fill:#FF6B9D,stroke:#fff,color:#fff
-style C fill:#86868B,stroke:#fff,color:#fff
-
+    A[🗺️ Interactive Map] --> B[📊 Data Charts]
+    B --> C[📋 Analysis Report]
+    C --> A
+    style A fill:#0071E3,stroke:#fff,color:#fff
+    style B fill:#FF6B9D,stroke:#fff,color:#fff
+    style C fill:#86868B,stroke:#fff,color:#fff
+```
 
 <br>
 
@@ -188,21 +188,20 @@ style C fill:#86868B,stroke:#fff,color:#fff
 
 <br>
 
-css
+```css
 /* Apple-inspired Glassmorphism */
 .glass-panel {
-background: rgba(255, 255, 255, 0.72);
-backdrop-filter: saturate(180%) blur(20px);
--webkit-backdrop-filter: saturate(180%) blur(20px);
-border: 1px solid rgba(255, 255, 255, 0.18);
+    background: rgba(255, 255, 255, 0.72);
+    backdrop-filter: saturate(180%) blur(20px);
+    -webkit-backdrop-filter: saturate(180%) blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.18);
 }
 
 /* Apple-style Smooth Animations */
-
-{
-transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+* {
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
-
+```
 
 </details>
 
@@ -336,26 +335,27 @@ Icons
 
 <br>
 
-mermaid
+```mermaid
 graph TD
-A[User Interaction] --> B{Action Type}
-B -->|Click State| C[Update Detail Panel]
-B -->|Hover State| D[Show Tooltip]
-B -->|Switch Tab| E[Render Charts]
+    A[User Interaction] --> B{Action Type}
+    B -->|Click State| C[Update Detail Panel]
+    B -->|Hover State| D[Show Tooltip]
+    B -->|Switch Tab| E[Render Charts]
 
-C --> F[Animate Numbers]
-C --> G[Update Progress Bars]
+    C --> F[Animate Numbers]
+    C --> G[Update Progress Bars]
 
-E --> H[Bar Chart]
-E --> I[Pie Chart]
-E --> J[Line Chart]
-E --> K[Radar Chart]
+    E --> H[Bar Chart]
+    E --> I[Pie Chart]
+    E --> J[Line Chart]
+    E --> K[Radar Chart]
 
-style A fill:#0071E3,stroke:#fff,color:#fff
-style B fill:#FF6B9D,stroke:#fff,color:#fff
-style C fill:#86868B,stroke:#fff,color:#fff
-style D fill:#86868B,stroke:#fff,color:#fff
-style E fill:#86868B,stroke:#fff,color:#fff
+    style A fill:#0071E3,stroke:#fff,color:#fff
+    style B fill:#FF6B9D,stroke:#fff,color:#fff
+    style C fill:#86868B,stroke:#fff,color:#fff
+    style D fill:#86868B,stroke:#fff,color:#fff
+    style E fill:#86868B,stroke:#fff,color:#fff
+```
 
 <br>
 
@@ -386,30 +386,29 @@ style E fill:#86868B,stroke:#fff,color:#fff
 
 **Option 1: Direct Download** 📥
 
-bash
-
-Download index.html
+```bash
+# Download index.html
 wget https://raw.githubusercontent.com/yourusername/us-population-insights/main/index.html
 
-Open in browser
+# Open in browser
 open index.html
-
+```
 
 </td>
 <td width="50%">
 
 **Option 2: Git Clone** 🔄
 
-bash
-
-Clone repository
+```bash
+# Clone repository
 git clone https://github.com/yourusername/us-population-insights.git
 
-Navigate to project
+# Navigate to project
 cd us-population-insights
 
-Open in browser
+# Open in browser
 open index.html
+```
 
 </td>
 </tr>
@@ -425,30 +424,33 @@ open index.html
 <br>
 
 **Python Server:**
-bash
 
-Python 3
+```bash
+# Python 3
 python -m http.server 8000
 
-Python 2
+# Python 2
 python -m SimpleHTTPServer 8000
 
-Visit http://localhost:8000
+# Visit http://localhost:8000
+```
 
 **Node.js Server:**
-bash
 
-Using http-server
+```bash
+# Using http-server
 npx http-server
 
-Using live-server
+# Using live-server
 npx live-server
+```
 
 **VS Code:**
-bash
 
-Install Live Server extension
-Right-click index.html → “Open with Live Server”
+```bash
+# Install Live Server extension
+# Right-click index.html → "Open with Live Server"
+```
 
 </details>
 
@@ -496,13 +498,13 @@ Right-click index.html → “Open with Live Server”
 
 <br>
 
-mermaid
+```mermaid
 pie title US Population Distribution by Region
-“South” : 35
-“West” : 23
-“Midwest” : 21
-“Northeast” : 21
-
+    "South" : 35
+    "West" : 23
+    "Midwest" : 21
+    "Northeast" : 21
+```
 
 </details>
 
@@ -525,12 +527,12 @@ pie title US Population Distribution by Region
 - **State Selection**: Click to highlight and view details
 - **Responsive Scaling**: Adapts to any screen size
 
-javascript
+```javascript
 // Color interpolation for states
 const colorScale = d3.scaleSequential()
-.domain([0, 500000])
-.interpolator(d3.interpolateRgb(“#e8f0fe”, “#0071e3”));
-
+    .domain([0, 500000])
+    .interpolator(d3.interpolateRgb("#e8f0fe", "#0071e3"));
+```
 
 </details>
 
@@ -580,39 +582,39 @@ const colorScale = d3.scaleSequential()
 
 ### 🏆 Design Excellence
 
-text
+```
 🎨 Apple-Inspired UI
 ✨ Glassmorphism Effects
 🎯 Pixel-Perfect Layouts
 💫 Smooth Animations
 📱 Fully Responsive
-
+```
 
 </td>
 <td>
 
 ### 🚀 Performance
 
-text
+```
 ⚡ Single File Application
 📦 No Build Required
 🔄 Real-time Updates
 💾 Minimal Dependencies
 🌐 CDN Powered
-
+```
 
 </td>
 <td>
 
 ### 📊 Data Rich
 
-text
+```
 🗺️ 50 States + DC
 📈 4 Chart Types
 📋 Comprehensive Reports
 🔍 Interactive Elements
 💡 Smart Insights
-
+```
 
 </td>
 </tr>
@@ -634,20 +636,21 @@ We welcome contributions! Here's how you can help:
 
 </div>
 
-mermaid
+```mermaid
 graph LR
-A[Fork Project] --> B[Create Branch]
-B --> C[Make Changes]
-C --> D[Run Tests]
-D --> E[Submit PR]
-E --> F[Review & Merge]
+    A[Fork Project] --> B[Create Branch]
+    B --> C[Make Changes]
+    C --> D[Run Tests]
+    D --> E[Submit PR]
+    E --> F[Review & Merge]
 
-style A fill:#0071E3,stroke:#fff,color:#fff
-style B fill:#FF6B9D,stroke:#fff,color:#fff
-style C fill:#86868B,stroke:#fff,color:#fff
-style D fill:#34C759,stroke:#fff,color:#fff
-style E fill:#FF9500,stroke:#fff,color:#fff
-style F fill:#AF52DE,stroke:#fff,color:#fff
+    style A fill:#0071E3,stroke:#fff,color:#fff
+    style B fill:#FF6B9D,stroke:#fff,color:#fff
+    style C fill:#86868B,stroke:#fff,color:#fff
+    style D fill:#34C759,stroke:#fff,color:#fff
+    style E fill:#FF9500,stroke:#fff,color:#fff
+    style F fill:#AF52DE,stroke:#fff,color:#fff
+```
 
 <br>
 
@@ -663,12 +666,14 @@ style F fill:#AF52DE,stroke:#fff,color:#fff
 5. **Open** a Pull Request
 
 ### 🐛 Bug Reports
+
 - Use GitHub Issues
 - Include browser & OS info
 - Provide screenshots
 - Describe expected vs actual behavior
 
 ### 💡 Feature Requests
+
 - Check existing issues first
 - Clearly describe the feature
 - Explain the use case
@@ -717,7 +722,7 @@ MIT License
 Copyright © 2024 US Population Insights
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the “Software”), to deal
+of this software and associated documentation files (the "Software"), to deal
 in the Software without restriction, including without limitation the rights
 to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 copies of the Software, and to permit persons to whom the Software is
@@ -725,7 +730,6 @@ furnished to do so, subject to the following conditions:
 
 The above copyright notice and this permission notice shall be included in all
 copies or substantial portions of the Software.
-
 
 </div>
 
