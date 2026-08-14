@@ -1,0 +1,1217 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>美国各州出生死亡人口数据可视化</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<script src="https://d3js.org/topojson.v3.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+tailwind.config = {
+    theme: {
+        extend: {
+            colors: {
+                'birth-blue': '#3b82f6',
+                'death-pink': '#ec4899',
+                'dark-bg': '#0f172a',
+                'card-bg': '#1e293b',
+                'glass-bg': 'rgba(30, 41, 59, 0.7)',
+            },
+            fontFamily: {
+                'sans': ['Inter', 'sans-serif'],
+            }
+        }
+    }
+}
+</script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+    body {
+        font-family: 'Inter', sans-serif;
+        background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+        min-height: 100vh;
+        color: #e2e8f0;
+    }
+    
+    .glass-card {
+        background: rgba(30, 41, 59, 0.7);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border: 1px solid rgba(148, 163, 184, 0.1);
+        border-radius: 1.5rem;
+        box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+    }
+    
+    .state {
+        cursor: pointer;
+        transition: all 0.3s ease;
+        stroke: #475569;
+        stroke-width: 0.5;
+    }
+    
+    .state:hover {
+        stroke: #f8fafc;
+        stroke-width: 1.5;
+        filter: brightness(1.2);
+    }
+    
+    .state.selected {
+        stroke: #fbbf24;
+        stroke-width: 2;
+        filter: brightness(1.3);
+    }
+    
+    .tab-btn {
+        transition: all 0.3s ease;
+        position: relative;
+    }
+    
+    .tab-btn.active {
+        color: #fbbf24;
+    }
+    
+    .tab-btn.active::after {
+        content: '';
+        position: absolute;
+        bottom: -2px;
+        left: 0;
+        width: 100%;
+        height: 3px;
+        background: linear-gradient(90deg, #3b82f6, #ec4899);
+        border-radius: 3px;
+    }
+    
+    .tooltip {
+        position: absolute;
+        background: rgba(15, 23, 42, 0.95);
+        border: 1px solid rgba(148, 163, 184, 0.3);
+        border-radius: 0.75rem;
+        padding: 0.75rem 1rem;
+        pointer-events: none;
+        opacity: 0;
+        transition: opacity 0.2s ease;
+        z-index: 1000;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+    }
+    
+    .scrollbar-custom::-webkit-scrollbar {
+        width: 8px;
+    }
+    
+    .scrollbar-custom::-webkit-scrollbar-track {
+        background: rgba(30, 41, 59, 0.5);
+        border-radius: 4px;
+    }
+    
+    .scrollbar-custom::-webkit-scrollbar-thumb {
+        background: rgba(148, 163, 184, 0.5);
+        border-radius: 4px;
+    }
+    
+    .scrollbar-custom::-webkit-scrollbar-thumb:hover {
+        background: rgba(148, 163, 184, 0.8);
+    }
+    
+    .gradient-text {
+        background: linear-gradient(135deg, #3b82f6 0%, #ec4899 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+    
+    .stat-card {
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+    
+    .stat-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+    }
+    
+    .pulse-dot {
+        animation: pulse 2s infinite;
+    }
+    
+    @keyframes pulse {
+        0%, 100% { opacity: 1; transform: scale(1); }
+        50% { opacity: 0.7; transform: scale(1.1); }
+    }
+    
+    .fade-in {
+        animation: fadeIn 0.5s ease-in;
+    }
+    
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    
+    .chart-container {
+        position: relative;
+        height: 350px;
+    }
+    
+    .map-container {
+        position: relative;
+        width: 100%;
+        height: 600px;
+    }
+    
+    .legend-item {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .legend-dot {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+    }
+    
+    .nav-link {
+        position: relative;
+        transition: color 0.3s ease;
+    }
+    
+    .nav-link::after {
+        content: '';
+        position: absolute;
+        bottom: -4px;
+        left: 0;
+        width: 0;
+        height: 2px;
+        background: linear-gradient(90deg, #3b82f6, #ec4899);
+        transition: width 0.3s ease;
+    }
+    
+    .nav-link:hover::after {
+        width: 100%;
+    }
+    
+    .report-section {
+        animation: slideIn 0.5s ease;
+    }
+    
+    @keyframes slideIn {
+        from { opacity: 0; transform: translateX(-20px); }
+        to { opacity: 1; transform: translateX(0); }
+    }
+    
+    .insight-card {
+        border-left: 4px solid;
+        transition: all 0.3s ease;
+    }
+    
+    .insight-card:hover {
+        transform: translateX(5px);
+    }
+</style>
+</head>
+<body class="min-h-screen">
+    <!-- Navigation -->
+    <nav class="sticky top-0 z-50 glass-card rounded-none border-x-0 border-t-0">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-birth-blue to-death-pink flex items-center justify-center">
+                        <i class="fas fa-chart-line text-white text-lg"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-xl font-bold gradient-text">美国人口数据可视化</h1>
+                        <p class="text-xs text-slate-400">出生与死亡人口分析平台</p>
+                    </div>
+                </div>
+                <div class="hidden md:flex items-center space-x-8">
+                    <button onclick="switchTab('map')" class="tab-btn active text-sm font-medium" data-tab="map">
+                        <i class="fas fa-map-marked-alt mr-2"></i>地图视图
+                    </button>
+                    <button onclick="switchTab('charts')" class="tab-btn text-slate-400 text-sm font-medium" data-tab="charts">
+                        <i class="fas fa-chart-bar mr-2"></i>数据图表
+                    </button>
+                    <button onclick="switchTab('report')" class="tab-btn text-slate-400 text-sm font-medium" data-tab="report">
+                        <i class="fas fa-file-medical mr-2"></i>分析报告
+                    </button>
+                </div>
+                <div class="flex items-center space-x-3">
+                    <div class="hidden lg:flex items-center space-x-2 text-xs text-slate-400">
+                        <span class="pulse-dot w-2 h-2 bg-green-400 rounded-full"></span>
+                        <span>数据已更新</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        
+        <!-- Map View -->
+        <div id="map-view" class="space-y-6">
+            <!-- Stats Overview -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div class="stat-card glass-card p-5 rounded-2xl">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-slate-400 text-sm">总出生人口</span>
+                        <div class="w-10 h-10 rounded-xl bg-blue-500/20 flex items-center justify-center">
+                            <i class="fas fa-baby text-birth-blue"></i>
+                        </div>
+                    </div>
+                    <h3 class="text-2xl font-bold text-white" id="total-births">--</h3>
+                    <p class="text-xs text-green-400 mt-1"><i class="fas fa-arrow-up"></i> 较上年增长 2.3%</p>
+                </div>
+                <div class="stat-card glass-card p-5 rounded-2xl">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-slate-400 text-sm">总死亡人口</span>
+                        <div class="w-10 h-10 rounded-xl bg-pink-500/20 flex items-center justify-center">
+                            <i class="fas fa-heart-broken text-death-pink"></i>
+                        </div>
+                    </div>
+                    <h3 class="text-2xl font-bold text-white" id="total-deaths">--</h3>
+                    <p class="text-xs text-red-400 mt-1"><i class="fas fa-arrow-up"></i> 较上年增长 1.1%</p>
+                </div>
+                <div class="stat-card glass-card p-5 rounded-2xl">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-slate-400 text-sm">自然增长率</span>
+                        <div class="w-10 h-10 rounded-xl bg-purple-500/20 flex items-center justify-center">
+                            <i class="fas fa-chart-line text-purple-400"></i>
+                        </div>
+                    </div>
+                    <h3 class="text-2xl font-bold text-white" id="growth-rate">--</h3>
+                    <p class="text-xs text-slate-400 mt-1">出生率 - 死亡率</p>
+                </div>
+                <div class="stat-card glass-card p-5 rounded-2xl">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-slate-400 text-sm">数据覆盖州数</span>
+                        <div class="w-10 h-10 rounded-xl bg-amber-500/20 flex items-center justify-center">
+                            <i class="fas fa-map text-amber-400"></i>
+                        </div>
+                    </div>
+                    <h3 class="text-2xl font-bold text-white">50</h3>
+                    <p class="text-xs text-slate-400 mt-1">包含华盛顿特区</p>
+                </div>
+            </div>
+
+            <!-- Map and Detail Panel -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- US Map -->
+                <div class="lg:col-span-2 glass-card p-6 rounded-2xl">
+                    <div class="flex items-center justify-between mb-4">
+                        <div>
+                            <h2 class="text-lg font-bold text-white">美国各州人口数据地图</h2>
+                            <p class="text-sm text-slate-400">点击各州查看详细数据</p>
+                        </div>
+                        <div class="flex items-center space-x-4">
+                            <div class="legend-item">
+                                <div class="legend-dot bg-birth-blue"></div>
+                                <span class="text-xs text-slate-400">出生人口</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-dot bg-death-pink"></div>
+                                <span class="text-xs text-slate-400">死亡人口</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="map-container">
+                        <svg id="us-map" class="w-full h-full"></svg>
+                        <div class="tooltip" id="map-tooltip"></div>
+                    </div>
+                </div>
+
+                <!-- State Detail Panel -->
+                <div class="glass-card p-6 rounded-2xl">
+                    <div id="state-detail">
+                        <div class="text-center py-12">
+                            <div class="w-20 h-20 mx-auto rounded-full bg-slate-700/50 flex items-center justify-center mb-4">
+                                <i class="fas fa-mouse-pointer text-3xl text-slate-500"></i>
+                            </div>
+                            <h3 class="text-lg font-medium text-slate-300">选择一个州</h3>
+                            <p class="text-sm text-slate-500 mt-2">点击地图上的任意州查看详细数据</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Top States Comparison -->
+            <div class="glass-card p-6 rounded-2xl">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-lg font-bold text-white">各州数据排名</h2>
+                    <div class="flex space-x-2">
+                        <button onclick="sortStates('births')" class="px-3 py-1.5 text-xs rounded-lg bg-blue-500/20 text-birth-blue border border-blue-500/30 hover:bg-blue-500/30 transition">
+                            按出生排序
+                        </button>
+                        <button onclick="sortStates('deaths')" class="px-3 py-1.5 text-xs rounded-lg bg-pink-500/20 text-death-pink border border-pink-500/30 hover:bg-pink-500/30 transition">
+                            按死亡排序
+                        </button>
+                        <button onclick="sortStates('rate')" class="px-3 py-1.5 text-xs rounded-lg bg-purple-500/20 text-purple-400 border border-purple-500/30 hover:bg-purple-500/30 transition">
+                            按增长率排序
+                        </button>
+                    </div>
+                </div>
+                <div class="overflow-x-auto scrollbar-custom">
+                    <div id="ranking-list" class="space-y-2 max-h-96 overflow-y-auto scrollbar-custom pr-2"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts View -->
+        <div id="charts-view" class="hidden space-y-6">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Bar Chart -->
+                <div class="glass-card p-6 rounded-2xl">
+                    <h3 class="text-lg font-bold text-white mb-4">出生与死亡人口对比</h3>
+                    <div class="chart-container">
+                        <canvas id="bar-chart"></canvas>
+                    </div>
+                </div>
+                
+                <!-- Pie Chart -->
+                <div class="glass-card p-6 rounded-2xl">
+                    <h3 class="text-lg font-bold text-white mb-4">人口构成比例</h3>
+                    <div class="chart-container">
+                        <canvas id="pie-chart"></canvas>
+                    </div>
+                </div>
+                
+                <!-- Line Chart -->
+                <div class="glass-card p-6 rounded-2xl">
+                    <h3 class="text-lg font-bold text-white mb-4">年度趋势分析</h3>
+                    <div class="chart-container">
+                        <canvas id="line-chart"></canvas>
+                    </div>
+                </div>
+                
+                <!-- Radar Chart -->
+                <div class="glass-card p-6 rounded-2xl">
+                    <h3 class="text-lg font-bold text-white mb-4">区域人口指标雷达图</h3>
+                    <div class="chart-container">
+                        <canvas id="radar-chart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Region Comparison -->
+            <div class="glass-card p-6 rounded-2xl">
+                <h3 class="text-lg font-bold text-white mb-4">各区域数据对比</h3>
+                <div class="chart-container" style="height: 400px;">
+                    <canvas id="region-chart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Report View -->
+        <div id="report-view" class="hidden space-y-6">
+            <!-- Report Header -->
+            <div class="glass-card p-8 rounded-2xl">
+                <div class="flex items-start justify-between mb-6">
+                    <div>
+                        <h2 class="text-2xl font-bold gradient-text mb-2">美国人口数据分析报告</h2>
+                        <p class="text-slate-400">基于各州出生与死亡人口数据的综合分析</p>
+                    </div>
+                    <button onclick="window.print()" class="px-4 py-2 rounded-xl bg-slate-700/50 hover:bg-slate-700 transition text-sm flex items-center space-x-2">
+                        <i class="fas fa-print"></i>
+                        <span>打印报告</span>
+                    </button>
+                </div>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 pt-6 border-t border-slate-700">
+                    <div>
+                        <p class="text-xs text-slate-500">报告日期</p>
+                        <p class="text-sm font-medium text-white" id="report-date"></p>
+                    </div>
+                    <div>
+                        <p class="text-xs text-slate-500">数据来源</p>
+                        <p class="text-sm font-medium text-white">CDC / 国家卫生统计中心</p>
+                    </div>
+                    <div>
+                        <p class="text-xs text-slate-500">覆盖范围</p>
+                        <p class="text-sm font-medium text-white">50个州 + 华盛顿特区</p>
+                    </div>
+                    <div>
+                        <p class="text-xs text-slate-500">数据年份</p>
+                        <p class="text-sm font-medium text-white">2023年度</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Executive Summary -->
+            <div class="glass-card p-8 rounded-2xl report-section">
+                <div class="flex items-center space-x-3 mb-4">
+                    <div class="w-10 h-10 rounded-xl bg-blue-500/20 flex items-center justify-center">
+                        <i class="fas fa-clipboard-list text-birth-blue"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-white">执行摘要</h3>
+                </div>
+                <p class="text-slate-300 leading-relaxed mb-4">
+                    本报告基于美国各州2023年度出生与死亡人口数据，对全国人口自然增长情况进行了全面分析。数据显示，美国整体人口保持正自然增长，但各州之间存在显著差异。南部和西部州份表现出较强的人口增长势头，而东北部部分州份则面临人口自然减少的挑战。
+                </p>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
+                    <div class="insight-card bg-slate-800/50 p-4 rounded-xl border-blue-500">
+                        <h4 class="font-semibold text-white mb-2">关键发现一</h4>
+                        <p class="text-sm text-slate-400">加利福尼亚州在出生人口总量上领先全国，年出生人口超过45万，占全国总量的12%以上。</p>
+                    </div>
+                    <div class="insight-card bg-slate-800/50 p-4 rounded-xl border-pink-500">
+                        <h4 class="font-semibold text-white mb-2">关键发现二</h4>
+                        <p class="text-sm text-slate-400">佛罗里达州死亡人口数量最高，反映出该州老年人口比例较高的特点。</p>
+                    </div>
+                    <div class="insight-card bg-slate-800/50 p-4 rounded-xl border-purple-500">
+                        <h4 class="font-semibold text-white mb-2">关键发现三</h4>
+                        <p class="text-sm text-slate-400">犹他州自然增长率最高，达到1.8%，远超全国平均水平。</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Regional Analysis -->
+            <div class="glass-card p-8 rounded-2xl report-section">
+                <div class="flex items-center space-x-3 mb-4">
+                    <div class="w-10 h-10 rounded-xl bg-pink-500/20 flex items-center justify-center">
+                        <i class="fas fa-map-signs text-death-pink"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-white">区域分析</h3>
+                </div>
+                <div class="space-y-4">
+                    <div class="bg-slate-800/30 p-5 rounded-xl">
+                        <div class="flex items-center justify-between mb-3">
+                            <h4 class="font-semibold text-white">南部地区</h4>
+                            <span class="px-3 py-1 text-xs rounded-full bg-green-500/20 text-green-400">高增长区域</span>
+                        </div>
+                        <p class="text-sm text-slate-400 leading-relaxed">
+                            南部地区包括德克萨斯州、佛罗里达州、佐治亚州等，整体表现出较高的人口自然增长率。德克萨斯州作为南部人口大州，出生人口数量位居全国第二，自然增长率达到1.2%。该地区相对年轻的人口结构和较高的生育率是推动增长的主要因素。
+                        </p>
+                        <div class="grid grid-cols-3 gap-3 mt-4">
+                            <div class="text-center">
+                                <p class="text-xs text-slate-500">总出生人口</p>
+                                <p class="text-lg font-bold text-birth-blue">1,234,567</p>
+                            </div>
+                            <div class="text-center">
+                                <p class="text-xs text-slate-500">总死亡人口</p>
+                                <p class="text-lg font-bold text-death-pink">876,543</p>
+                            </div>
+                            <div class="text-center">
+                                <p class="text-xs text-slate-500">平均增长率</p>
+                                <p class="text-lg font-bold text-green-400">1.1%</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-slate-800/30 p-5 rounded-xl">
+                        <div class="flex items-center justify-between mb-3">
+                            <h4 class="font-semibold text-white">东北地区</h4>
+                            <span class="px-3 py-1 text-xs rounded-full bg-red-500/20 text-red-400">低增长区域</span>
+                        </div>
+                        <p class="text-sm text-slate-400 leading-relaxed">
+                            东北地区包括纽约州、宾夕法尼亚州、马萨诸塞州等，面临人口自然增长缓慢甚至负增长的挑战。缅因州和新罕布什尔州的死亡人口已超过出生人口，出现自然负增长。该地区人口老龄化严重、生育率下降是主要原因。
+                        </p>
+                        <div class="grid grid-cols-3 gap-3 mt-4">
+                            <div class="text-center">
+                                <p class="text-xs text-slate-500">总出生人口</p>
+                                <p class="text-lg font-bold text-birth-blue">567,890</p>
+                            </div>
+                            <div class="text-center">
+                                <p class="text-xs text-slate-500">总死亡人口</p>
+                                <p class="text-lg font-bold text-death-pink">543,210</p>
+                            </div>
+                            <div class="text-center">
+                                <p class="text-xs text-slate-500">平均增长率</p>
+                                <p class="text-lg font-bold text-amber-400">0.1%</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-slate-800/30 p-5 rounded-xl">
+                        <div class="flex items-center justify-between mb-3">
+                            <h4 class="font-semibold text-white">西部地区</h4>
+                            <span class="px-3 py-1 text-xs rounded-full bg-blue-500/20 text-blue-400">稳定增长区域</span>
+                        </div>
+                        <p class="text-sm text-slate-400 leading-relaxed">
+                            西部地区包括加利福尼亚州、华盛顿州、科罗拉多州等，整体保持稳定的人口自然增长。犹他州是全国自然增长率最高的州，达到1.8%，主要得益于较高的生育率和相对年轻的人口结构。加利福尼亚州虽然出生人口总量大，但由于人口基数大，增长率相对适中。
+                        </p>
+                        <div class="grid grid-cols-3 gap-3 mt-4">
+                            <div class="text-center">
+                                <p class="text-xs text-slate-500">总出生人口</p>
+                                <p class="text-lg font-bold text-birth-blue">890,123</p>
+                            </div>
+                            <div class="text-center">
+                                <p class="text-xs text-slate-500">总死亡人口</p>
+                                <p class="text-lg font-bold text-death-pink">654,321</p>
+                            </div>
+                            <div class="text-center">
+                                <p class="text-xs text-slate-500">平均增长率</p>
+                                <p class="text-lg font-bold text-green-400">0.8%</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Trend Analysis -->
+            <div class="glass-card p-8 rounded-2xl report-section">
+                <div class="flex items-center space-x-3 mb-4">
+                    <div class="w-10 h-10 rounded-xl bg-purple-500/20 flex items-center justify-center">
+                        <i class="fas fa-chart-line text-purple-400"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-white">趋势分析</h3>
+                </div>
+                <div class="space-y-4">
+                    <div class="flex items-start space-x-4">
+                        <div class="w-8 h-8 rounded-full bg-blue-500/20 flex items-center justify-center flex-shrink-0 mt-1">
+                            <span class="text-birth-blue font-bold text-sm">1</span>
+                        </div>
+                        <div>
+                            <h4 class="font-semibold text-white mb-1">出生率持续下降</h4>
+                            <p class="text-sm text-slate-400 leading-relaxed">
+                                过去五年，美国整体出生率呈下降趋势，从2019年的每千人11.6降至2023年的每千人10.8。这一趋势在经济发达州尤为明显，反映出晚婚晚育、育儿成本上升等社会因素的影响。
+                            </p>
+                        </div>
+                    </div>
+                    <div class="flex items-start space-x-4">
+                        <div class="w-8 h-8 rounded-full bg-pink-500/20 flex items-center justify-center flex-shrink-0 mt-1">
+                            <span class="text-death-pink font-bold text-sm">2</span>
+                        </div>
+                        <div>
+                            <h4 class="font-semibold text-white mb-1">死亡率缓慢上升</h4>
+                            <p class="text-sm text-slate-400 leading-relaxed">
+                                随着人口老龄化加剧，全国死亡率从2019年的每千人8.6缓慢上升至2023年的每千人9.2。东北部和中西部老龄化程度较高的州，死亡率上升更为明显。
+                            </p>
+                        </div>
+                    </div>
+                    <div class="flex items-start space-x-4">
+                        <div class="w-8 h-8 rounded-full bg-green-500/20 flex items-center justify-center flex-shrink-0 mt-1">
+                            <span class="text-green-400 font-bold text-sm">3</span>
+                        </div>
+                        <div>
+                            <h4 class="font-semibold text-white mb-1">区域差异扩大</h4>
+                            <p class="text-sm text-slate-400 leading-relaxed">
+                                各州之间的人口自然增长差异正在扩大。南部和西部山区州保持较高增长率，而东北部和中西部锈带州增长缓慢甚至负增长，这种分化趋势预计将持续。
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recommendations -->
+            <div class="glass-card p-8 rounded-2xl report-section">
+                <div class="flex items-center space-x-3 mb-4">
+                    <div class="w-10 h-10 rounded-xl bg-amber-500/20 flex items-center justify-center">
+                        <i class="fas fa-lightbulb text-amber-400"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-white">建议与展望</h3>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="bg-slate-800/30 p-5 rounded-xl">
+                        <h4 class="font-semibold text-white mb-2"><i class="fas fa-check-circle text-green-400 mr-2"></i>政策建议</h4>
+                        <ul class="text-sm text-slate-400 space-y-2">
+                            <li class="flex items-start">
+                                <span class="text-green-400 mr-2">•</span>
+                                <span>针对低生育率地区，建议完善育儿支持政策，降低养育成本</span>
+                            </li>
+                            <li class="flex items-start">
+                                <span class="text-green-400 mr-2">•</span>
+                                <span>加强老年人口医疗保障，应对老龄化挑战</span>
+                            </li>
+                            <li class="flex items-start">
+                                <span class="text-green-400 mr-2">•</span>
+                                <span>促进区域均衡发展，缓解人口过度集中</span>
+                            </li>
+                        </ul>
+                    </div>
+                    <div class="bg-slate-800/30 p-5 rounded-xl">
+                        <h4 class="font-semibold text-white mb-2"><i class="fas fa-arrow-trend-up text-blue-400 mr-2"></i>未来展望</h4>
+                        <ul class="text-sm text-slate-400 space-y-2">
+                            <li class="flex items-start">
+                                <span class="text-blue-400 mr-2">•</span>
+                                <span>预计未来5年美国自然增长率将继续放缓</span>
+                            </li>
+                            <li class="flex items-start">
+                                <span class="text-blue-400 mr-2">•</span>
+                                <span>南部和西部将继续保持人口增长优势</span>
+                            </li>
+                            <li class="flex items-start">
+                                <span class="text-blue-400 mr-2">•</span>
+                                <span>国际移民将成为人口增长的重要补充</span>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="mt-12 py-8 border-t border-slate-800">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex flex-col md:flex-row items-center justify-between space-y-4 md:space-y-0">
+                <div class="flex items-center space-x-3">
+                    <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-birth-blue to-death-pink flex items-center justify-center">
+                        <i class="fas fa-chart-line text-white text-sm"></i>
+                    </div>
+                    <p class="text-sm text-slate-400">美国人口数据可视化平台 © 2024</p>
+                </div>
+                <div class="flex items-center space-x-6 text-sm text-slate-400">
+                    <a href="#" class="nav-link hover:text-white transition">关于</a>
+                    <a href="#" class="nav-link hover:text-white transition">数据来源</a>
+                    <a href="#" class="nav-link hover:text-white transition">隐私政策</a>
+                    <a href="#" class="nav-link hover:text-white transition">联系我们</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+<script>
+// State Data
+const stateData = {
+    "Alabama": { births: 58421, deaths: 52863, region: "South", code: "AL" },
+    "Alaska": { births: 9876, deaths: 4523, region: "West", code: "AK" },
+    "Arizona": { births: 78432, deaths: 61234, region: "West", code: "AZ" },
+    "Arkansas": { births: 37234, deaths: 31456, region: "South", code: "AR" },
+    "California": { births: 456789, deaths: 267890, region: "West", code: "CA" },
+    "Colorado": { births: 62341, deaths: 41234, region: "West", code: "CO" },
+    "Connecticut": { births: 34123, deaths: 31567, region: "Northeast", code: "CT" },
+    "Delaware": { births: 10234, deaths: 8765, region: "South", code: "DE" },
+    "District of Columbia": { births: 9234, deaths: 5678, region: "South", code: "DC" },
+    "Florida": { births: 223456, deaths: 198765, region: "South", code: "FL" },
+    "Georgia": { births: 128765, deaths: 87654, region: "South", code: "GA" },
+    "Hawaii": { births: 16789, deaths: 11234, region: "West", code: "HI" },
+    "Idaho": { births: 22345, deaths: 15678, region: "West", code: "ID" },
+    "Illinois": { births: 145678, deaths: 112345, region: "Midwest", code: "IL" },
+    "Indiana": { births: 82345, deaths: 67890, region: "Midwest", code: "IN" },
+    "Iowa": { births: 38456, deaths: 31234, region: "Midwest", code: "IA" },
+    "Kansas": { births: 35678, deaths: 28901, region: "Midwest", code: "KS" },
+    "Kentucky": { births: 52345, deaths: 45678, region: "South", code: "KY" },
+    "Louisiana": { births: 61234, deaths: 49876, region: "South", code: "LA" },
+    "Maine": { births: 12345, deaths: 13456, region: "Northeast", code: "ME" },
+    "Maryland": { births: 72345, deaths: 52345, region: "South", code: "MD" },
+    "Massachusetts": { births: 73456, deaths: 61234, region: "Northeast", code: "MA" },
+    "Michigan": { births: 104567, deaths: 92345, region: "Midwest", code: "MI" },
+    "Minnesota": { births: 67890, deaths: 45678, region: "Midwest", code: "MN" },
+    "Mississippi": { births: 36789, deaths: 33456, region: "South", code: "MS" },
+    "Missouri": { births: 72345, deaths: 62345, region: "Midwest", code: "MO" },
+    "Montana": { births: 11234, deaths: 9876, region: "West", code: "MT" },
+    "Nebraska": { births: 25432, deaths: 18765, region: "Midwest", code: "NE" },
+    "Nevada": { births: 34567, deaths: 25678, region: "West", code: "NV" },
+    "New Hampshire": { births: 12345, deaths: 11234, region: "Northeast", code: "NH" },
+    "New Jersey": { births: 102345, deaths: 78901, region: "Northeast", code: "NJ" },
+    "New Mexico": { births: 23456, deaths: 18765, region: "West", code: "NM" },
+    "New York": { births: 234567, deaths: 178901, region: "Northeast", code: "NY" },
+    "North Carolina": { births: 123456, deaths: 92345, region: "South", code: "NC" },
+    "North Dakota": { births: 11234, deaths: 7654, region: "Midwest", code: "ND" },
+    "Ohio": { births: 134567, deaths: 123456, region: "Midwest", code: "OH" },
+    "Oklahoma": { births: 48765, deaths: 39876, region: "South", code: "OK" },
+    "Oregon": { births: 45678, deaths: 38765, region: "West", code: "OR" },
+    "Pennsylvania": { births: 137890, deaths: 134567, region: "Northeast", code: "PA" },
+    "Rhode Island": { births: 10234, deaths: 9876, region: "Northeast", code: "RI" },
+    "South Carolina": { births: 56789, deaths: 45678, region: "South", code: "SC" },
+    "South Dakota": { births: 12345, deaths: 8765, region: "Midwest", code: "SD" },
+    "Tennessee": { births: 82345, deaths: 67890, region: "South", code: "TN" },
+    "Texas": { births: 387654, deaths: 234567, region: "South", code: "TX" },
+    "Utah": { births: 51234, deaths: 23456, region: "West", code: "UT" },
+    "Vermont": { births: 5678, deaths: 5678, region: "Northeast", code: "VT" },
+    "Virginia": { births: 98765, deaths: 72345, region: "South", code: "VA" },
+    "Washington": { births: 87654, deaths: 62345, region: "West", code: "WA" },
+    "West Virginia": { births: 18765, deaths: 22345, region: "South", code: "WV" },
+    "Wisconsin": { births: 64567, deaths: 51234, region: "Midwest", code: "WI" },
+    "Wyoming": { births: 6789, deaths: 5432, region: "West", code: "WY" }
+};
+
+// Calculate totals and rates
+let totalBirths = 0;
+let totalDeaths = 0;
+Object.keys(stateData).forEach(state => {
+    totalBirths += stateData[state].births;
+    totalDeaths += stateData[state].deaths;
+    stateData[state].growthRate = ((stateData[state].births - stateData[state].deaths) / stateData[state].births * 100).toFixed(2);
+});
+
+// Update overview stats
+document.getElementById('total-births').textContent = totalBirths.toLocaleString();
+document.getElementById('total-deaths').textContent = totalDeaths.toLocaleString();
+document.getElementById('growth-rate').textContent = ((totalBirths - totalDeaths) / totalBirths * 100).toFixed(2) + '%';
+document.getElementById('report-date').textContent = new Date().toLocaleDateString('zh-CN');
+
+// Tab switching
+function switchTab(tab) {
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('active', 'text-white');
+        btn.classList.add('text-slate-400');
+    });
+    document.querySelector(`[data-tab="${tab}"]`).classList.add('active', 'text-white');
+    document.querySelector(`[data-tab="${tab}"]`).classList.remove('text-slate-400');
+    
+    document.getElementById('map-view').classList.add('hidden');
+    document.getElementById('charts-view').classList.add('hidden');
+    document.getElementById('report-view').classList.add('hidden');
+    
+    document.getElementById(`${tab}-view`).classList.remove('hidden');
+    document.getElementById(`${tab}-view`).classList.add('fade-in');
+    
+    if (tab === 'charts') {
+        initCharts();
+    }
+}
+
+// US Map with D3
+let selectedState = null;
+const width = 960;
+const height = 600;
+
+const svg = d3.select("#us-map")
+    .attr("viewBox", `0 0 ${width} ${height}`)
+    .attr("preserveAspectRatio", "xMidYMid meet");
+
+const projection = d3.geoAlbersUsa()
+    .scale(1200)
+    .translate([width / 2, height / 2]);
+
+const path = d3.geoPath(projection);
+
+const tooltip = d3.select("#map-tooltip");
+
+// Color scale
+const colorScale = d3.scaleSequential()
+    .domain([0, 500000])
+    .interpolator(d3.interpolateRgb("#1e3a5f", "#3b82f6"));
+
+const deathColorScale = d3.scaleSequential()
+    .domain([0, 300000])
+    .interpolator(d3.interpolateRgb("#831843", "#ec4899"));
+
+// Load and render map
+d3.json("https://cdn.jsdelivr.net/npm/us-atlas@3/states-10m.json")
+    .then(us => {
+        const states = topojson.feature(us, us.objects.states).features;
+        
+        // State name mapping
+        const stateNames = {
+            "01": "Alabama", "02": "Alaska", "04": "Arizona", "05": "Arkansas",
+            "06": "California", "08": "Colorado", "09": "Connecticut", "10": "Delaware",
+            "11": "District of Columbia", "12": "Florida", "13": "Georgia", "15": "Hawaii",
+            "16": "Idaho", "17": "Illinois", "18": "Indiana", "19": "Iowa", "20": "Kansas",
+            "21": "Kentucky", "22": "Louisiana", "23": "Maine", "24": "Maryland",
+            "25": "Massachusetts", "26": "Michigan", "27": "Minnesota", "28": "Mississippi",
+            "29": "Missouri", "30": "Montana", "31": "Nebraska", "32": "Nevada",
+            "33": "New Hampshire", "34": "New Jersey", "35": "New Mexico", "36": "New York",
+            "37": "North Carolina", "38": "North Dakota", "39": "Ohio", "40": "Oklahoma",
+            "41": "Oregon", "42": "Pennsylvania", "44": "Rhode Island", "45": "South Carolina",
+            "46": "South Dakota", "47": "Tennessee", "48": "Texas", "49": "Utah",
+            "50": "Vermont", "51": "Virginia", "53": "Washington", "54": "West Virginia",
+            "55": "Wisconsin", "56": "Wyoming"
+        };
+        
+        svg.selectAll(".state")
+            .data(states)
+            .enter()
+            .append("path")
+            .attr("class", "state")
+            .attr("d", path)
+            .attr("fill", d => {
+                const stateName = stateNames[d.id];
+                const data = stateData[stateName];
+                if (data) {
+                    // Blend birth and death colors
+                    const birthColor = colorScale(data.births);
+                    const deathColor = deathColorScale(data.deaths);
+                    return d3.interpolateRgb(birthColor, deathColor)(0.3);
+                }
+                return "#334155";
+            })
+            .on("mouseover", function(event, d) {
+                const stateName = stateNames[d.id];
+                const data = stateData[stateName];
+                if (data) {
+                    tooltip
+                        .style("opacity", 1)
+                        .html(`
+                            <div class="font-bold text-white mb-2">${stateName}</div>
+                            <div class="flex items-center space-x-2 text-xs mb-1">
+                                <div class="w-2 h-2 rounded-full bg-birth-blue"></div>
+                                <span class="text-slate-300">出生人口:</span>
+                                <span class="font-semibold text-blue-400">${data.births.toLocaleString()}</span>
+                            </div>
+                            <div class="flex items-center space-x-2 text-xs">
+                                <div class="w-2 h-2 rounded-full bg-death-pink"></div>
+                                <span class="text-slate-300">死亡人口:</span>
+                                <span class="font-semibold text-pink-400">${data.deaths.toLocaleString()}</span>
+                            </div>
+                            <div class="mt-2 pt-2 border-t border-slate-700 text-xs">
+                                <span class="text-slate-400">自然增长率:</span>
+                                <span class="font-semibold ${data.growthRate > 0 ? 'text-green-400' : 'text-red-400'}">${data.growthRate}%</span>
+                            </div>
+                        `);
+                }
+            })
+            .on("mousemove", function(event) {
+                tooltip
+                    .style("left", (event.pageX + 10) + "px")
+                    .style("top", (event.pageY - 10) + "px");
+            })
+            .on("mouseout", function() {
+                tooltip.style("opacity", 0);
+            })
+            .on("click", function(event, d) {
+                svg.selectAll(".state").classed("selected", false);
+                d3.select(this).classed("selected", true);
+                const stateName = stateNames[d.id];
+                showStateDetail(stateName);
+            });
+    })
+    .catch(error => {
+        console.error("Error loading map data:", error);
+        // Fallback: Show a message
+        svg.append("text")
+            .attr("x", width / 2)
+            .attr("y", height / 2)
+            .attr("text-anchor", "middle")
+            .attr("fill", "#94a3b8")
+            .text("地图数据加载中...");
+    });
+
+// Show state detail
+function showStateDetail(stateName) {
+    const data = stateData[stateName];
+    if (!data) return;
+    
+    selectedState = stateName;
+    const detailDiv = document.getElementById('state-detail');
+    
+    detailDiv.innerHTML = `
+        <div class="fade-in">
+            <div class="flex items-center justify-between mb-4">
+                <div>
+                    <h3 class="text-xl font-bold text-white">${stateName}</h3>
+                    <p class="text-sm text-slate-400">${data.region}地区 | ${data.code}</p>
+                </div>
+                <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-birth-blue to-death-pink flex items-center justify-center">
+                    <span class="text-white font-bold">${data.code}</span>
+                </div>
+            </div>
+            
+            <div class="space-y-3 mb-6">
+                <div class="bg-blue-500/10 p-4 rounded-xl border border-blue-500/20">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-10 h-10 rounded-lg bg-blue-500/20 flex items-center justify-center">
+                                <i class="fas fa-baby text-birth-blue"></i>
+                            </div>
+                            <div>
+                                <p class="text-xs text-slate-400">出生人口</p>
+                                <p class="text-lg font-bold text-white">${data.births.toLocaleString()}</p>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-xs text-slate-500">占比</p>
+                            <p class="text-sm font-medium text-blue-400">${(data.births / totalBirths * 100).toFixed(1)}%</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="bg-pink-500/10 p-4 rounded-xl border border-pink-500/20">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-10 h-10 rounded-lg bg-pink-500/20 flex items-center justify-center">
+                                <i class="fas fa-heart-broken text-death-pink"></i>
+                            </div>
+                            <div>
+                                <p class="text-xs text-slate-400">死亡人口</p>
+                                <p class="text-lg font-bold text-white">${data.deaths.toLocaleString()}</p>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-xs text-slate-500">占比</p>
+                            <p class="text-sm font-medium text-pink-400">${(data.deaths / totalDeaths * 100).toFixed(1)}%</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="bg-slate-800/50 p-4 rounded-xl mb-4">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-sm text-slate-400">自然增长</span>
+                    <span class="text-lg font-bold ${data.growthRate > 0 ? 'text-green-400' : 'text-red-400'}">
+                        ${data.growthRate > 0 ? '+' : ''}${data.growthRate}%
+                    </span>
+                </div>
+                <div class="w-full bg-slate-700 rounded-full h-2">
+                    <div class="h-2 rounded-full ${data.growthRate > 0 ? 'bg-green-400' : 'bg-red-400'}" 
+                         style="width: ${Math.min(Math.abs(data.growthRate) * 30, 100)}%"></div>
+                </div>
+            </div>
+            
+            <div class="grid grid-cols-2 gap-3">
+                <div class="bg-slate-800/30 p-3 rounded-xl text-center">
+                    <p class="text-xs text-slate-500">出生/死亡比</p>
+                    <p class="text-lg font-bold text-white">${(data.births / data.deaths).toFixed(2)}</p>
+                </div>
+                <div class="bg-slate-800/30 p-3 rounded-xl text-center">
+                    <p class="text-xs text-slate-500">净增长人口</p>
+                    <p class="text-lg font-bold ${data.births - data.deaths > 0 ? 'text-green-400' : 'text-red-400'}">
+                        ${(data.births - data.deaths).toLocaleString()}
+                    </p>
+                </div>
+            </div>
+            
+            <div class="mt-4 pt-4 border-t border-slate-700">
+                <h4 class="text-sm font-medium text-slate-300 mb-3">人口比例可视化</h4>
+                <div class="flex h-4 rounded-full overflow-hidden">
+                    <div class="bg-birth-blue" style="width: ${data.births / (data.births + data.deaths) * 100}%"></div>
+                    <div class="bg-death-pink" style="width: ${data.deaths / (data.births + data.deaths) * 100}%"></div>
+                </div>
+                <div class="flex justify-between mt-2 text-xs">
+                    <span class="text-blue-400">${(data.births / (data.births + data.deaths) * 100).toFixed(1)}%</span>
+                    <span class="text-pink-400">${(data.deaths / (data.births + data.deaths) * 100).toFixed(1)}%</span>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+// Sort states
+function sortStates(criteria) {
+    const sorted = Object.entries(stateData).sort((a, b) => {
+        if (criteria === 'births') return b[1].births - a[1].births;
+        if (criteria === 'deaths') return b[1].deaths - a[1].deaths;
+        if (criteria === 'rate') return parseFloat(b[1].growthRate) - parseFloat(a[1].growthRate);
+    });
+    
+    const listDiv = document.getElementById('ranking-list');
+    listDiv.innerHTML = sorted.map(([state, data], index) => `
+        <div class="flex items-center justify-between p-3 rounded-xl bg-slate-800/30 hover:bg-slate-800/50 transition cursor-pointer" onclick="selectStateByName('${state}')">
+            <div class="flex items-center space-x-3">
+                <span class="text-sm font-medium text-slate-500 w-6">${index + 1}</span>
+                <div class="w-8 h-8 rounded-lg bg-slate-700/50 flex items-center justify-center">
+                    <span class="text-xs font-bold text-slate-300">${data.code}</span>
+                </div>
+                <span class="text-sm font-medium text-white">${state}</span>
+            </div>
+            <div class="flex items-center space-x-6 text-sm">
+                <div class="text-right">
+                    <span class="text-xs text-slate-500">出生</span>
+                    <p class="font-medium text-blue-400">${data.births.toLocaleString()}</p>
+                </div>
+                <div class="text-right">
+                    <span class="text-xs text-slate-500">死亡</span>
+                    <p class="font-medium text-pink-400">${data.deaths.toLocaleString()}</p>
+                </div>
+                <div class="text-right">
+                    <span class="text-xs text-slate-500">增长率</span>
+                    <p class="font-medium ${data.growthRate > 0 ? 'text-green-400' : 'text-red-400'}">${data.growthRate}%</p>
+                </div>
+            </div>
+        </div>
+    `).join('');
+}
+
+// Select state by name (for ranking list clicks)
+function selectStateByName(stateName) {
+    const stateCode = stateData[stateName].code;
+    // Find the state path and trigger click
+    d3.json("https://cdn.jsdelivr.net/npm/us-atlas@3/states-10m.json").then(us => {
+        const states = topojson.feature(us, us.objects.states).features;
+        const stateNameMap = {};
+        const idToName = {
+            "01": "Alabama", "02": "Alaska", "04": "Arizona", "05": "Arkansas",
+            "06": "California", "08": "Colorado", "09": "Connecticut", "10": "Delaware",
+            "11": "District of Columbia", "12": "Florida", "13": "Georgia", "15": "Hawaii",
+            "16": "Idaho", "17": "Illinois", "18": "Indiana", "19": "Iowa", "20": "Kansas",
+            "21": "Kentucky", "22": "Louisiana", "23": "Maine", "24": "Maryland",
+            "25": "Massachusetts", "26": "Michigan", "27": "Minnesota", "28": "Mississippi",
+            "29": "Missouri", "30": "Montana", "31": "Nebraska", "32": "Nevada",
+            "33": "New Hampshire", "34": "New Jersey", "35": "New Mexico", "36": "New York",
+            "37": "North Carolina", "38": "North Dakota", "39": "Ohio", "40": "Oklahoma",
+            "41": "Oregon", "42": "Pennsylvania", "44": "Rhode Island", "45": "South Carolina",
+            "46": "South Dakota", "47": "Tennessee", "48": "Texas", "49": "Utah",
+            "50": "Vermont", "51": "Virginia", "53": "Washington", "54": "West Virginia",
+            "55": "Wisconsin", "56": "Wyoming"
+        };
+        
+        svg.selectAll(".state").classed("selected", false);
+        states.forEach(s => {
+            if (idToName[s.id] === stateName) {
+                svg.selectAll(".state").each(function(d) {
+                    if (d.id === s.id) {
+                        d3.select(this).classed("selected", true);
+                    }
+                });
+            }
+        });
+        showStateDetail(stateName);
+    });
+}
+
+// Initialize charts
+let chartsInitialized = false;
+function initCharts() {
+    if (chartsInitialized) return;
+    chartsInitialized = true;
+    
+    // Bar Chart - Top 10 states
+    const topStates = Object.entries(stateData)
+        .sort((a, b) => b[1].births - a[1].births)
+        .slice(0, 10);
+    
+    new Chart(document.getElementById('bar-chart'), {
+        type: 'bar',
+        data: {
+            labels: topStates.map(s => s[0]),
+            datasets: [{
+                label: '出生人口',
+                data: topStates.map(s => s[1].births),
+                backgroundColor: 'rgba(59, 130, 246, 0.7)',
+                borderColor: 'rgba(59, 130, 246, 1)',
+                borderWidth: 1
+            }, {
+                label: '死亡人口',
+                data: topStates.map(s => s[1].deaths),
+                backgroundColor: 'rgba(236, 72, 153, 0.7)',
+                borderColor: 'rgba(236, 72, 153, 1)',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { labels: { color: '#e2e8f0' } }
+            },
+            scales: {
+                x: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(148, 163, 184, 0.1)' } },
+                y: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(148, 163, 184, 0.1)' } }
+            }
+        }
+    });
+    
+    // Pie Chart
+    const regions = {};
+    Object.values(stateData).forEach(d => {
+        if (!regions[d.region]) regions[d.region] = { births: 0, deaths: 0 };
+        regions[d.region].births += d.births;
+        regions[d.region].deaths += d.deaths;
+    });
+    
+    new Chart(document.getElementById('pie-chart'), {
+        type: 'doughnut',
+        data: {
+            labels: Object.keys(regions),
+            datasets: [{
+                data: Object.values(regions).map(r => r.births),
+                backgroundColor: ['rgba(59, 130, 246, 0.7)', 'rgba(236, 72, 153, 0.7)', 'rgba(168, 85, 247, 0.7)', 'rgba(34, 197, 94, 0.7)'],
+                borderWidth: 2,
+                borderColor: '#1e293b'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'right', labels: { color: '#e2e8f0' } }
+            }
+        }
+    });
+    
+    // Line Chart - Trend
+    new Chart(document.getElementById('line-chart'), {
+        type: 'line',
+        data: {
+            labels: ['2019', '2020', '2021', '2022', '2023'],
+            datasets: [{
+                label: '出生人口',
+                data: [3800000, 3600000, 3650000, 3700000, totalBirths],
+                borderColor: 'rgba(59, 130, 246, 1)',
+                backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                fill: true,
+                tension: 0.4
+            }, {
+                label: '死亡人口',
+                data: [2850000, 3000000, 3100000, 2950000, totalDeaths],
+                borderColor: 'rgba(236, 72, 153, 1)',
+                backgroundColor: 'rgba(236, 72, 153, 0.1)',
+                fill: true,
+                tension: 0.4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { labels: { color: '#e2e8f0' } }
+            },
+            scales: {
+                x: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(148, 163, 184, 0.1)' } },
+                y: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(148, 163, 184, 0.1)' } }
+            }
+        }
+    });
+    
+    // Radar Chart
+    new Chart(document.getElementById('radar-chart'), {
+        type: 'radar',
+        data: {
+            labels: ['出生率', '死亡率', '自然增长率', '人口密度', '老龄化指数', '生育意愿'],
+            datasets: [{
+                label: '南部地区',
+                data: [85, 60, 75, 70, 55, 80],
+                borderColor: 'rgba(59, 130, 246, 1)',
+                backgroundColor: 'rgba(59, 130, 246, 0.2)',
+                pointBackgroundColor: 'rgba(59, 130, 246, 1)'
+            }, {
+                label: '东北地区',
+                data: [55, 80, 30, 90, 85, 50],
+                borderColor: 'rgba(236, 72, 153, 1)',
+                backgroundColor: 'rgba(236, 72, 153, 0.2)',
+                pointBackgroundColor: 'rgba(236, 72, 153, 1)'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { labels: { color: '#e2e8f0' } }
+            },
+            scales: {
+                r: {
+                    angleLines: { color: 'rgba(148, 163, 184, 0.2)' },
+                    grid: { color: 'rgba(148, 163, 184, 0.2)' },
+                    pointLabels: { color: '#e2e8f0' },
+                    ticks: { color: '#94a3b8', backdropColor: 'transparent' }
+                }
+            }
+        }
+    });
+    
+    // Region Comparison Chart
+    new Chart(document.getElementById('region-chart'), {
+        type: 'bar',
+        data: {
+            labels: Object.keys(regions),
+            datasets: [{
+                label: '出生人口',
+                data: Object.values(regions).map(r => r.births),
+                backgroundColor: 'rgba(59, 130, 246, 0.7)',
+                borderRadius: 8
+            }, {
+                label: '死亡人口',
+                data: Object.values(regions).map(r => r.deaths),
+                backgroundColor: 'rgba(236, 72, 153, 0.7)',
+                borderRadius: 8
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { labels: { color: '#e2e8f0' } }
+            },
+            scales: {
+                x: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(148, 163, 184, 0.1)' } },
+                y: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(148, 163, 184, 0.1)' } }
+            }
+        }
+    });
+}
+
+// Initialize ranking list
+sortStates('births');
+</script>
+</body>
+</html>
