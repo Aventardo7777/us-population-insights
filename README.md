@@ -172,9 +172,6 @@ graph LR
 
 ### 🎨 Design Excellence
 
-<details>
-<summary>📖 Click to expand design details</summary>
-
 <br>
 
 | Design Element | Implementation | Apple Reference |
@@ -202,8 +199,6 @@ graph LR
     transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 ```
-
-</details>
 
 <br>
 
@@ -330,8 +325,7 @@ Icons
 
 </div>
 
-<details>
-<summary>🔧 Technical Implementation Details</summary>
+### 🔧 Technical Implementation Details
 
 <br>
 
@@ -367,8 +361,6 @@ graph TD
 | **Interactions** | Vanilla JavaScript | Click, hover, tab switching |
 | **Animations** | CSS Transitions + JS | Number counting, progress bars |
 | **Responsive** | Tailwind Breakpoints | Mobile, tablet, desktop |
-
-</details>
 
 <br>
 
@@ -418,8 +410,7 @@ open index.html
 
 ### 🏃 Run with Local Server
 
-<details>
-<summary>🔧 Advanced Setup Options</summary>
+### 🔧 Advanced Setup Options
 
 <br>
 
@@ -452,8 +443,6 @@ npx live-server
 # Right-click index.html → "Open with Live Server"
 ```
 
-</details>
-
 <br>
 
 ### 📖 Usage Guide
@@ -477,8 +466,7 @@ npx live-server
 
 ## 📊 Data & Statistics
 
-<details>
-<summary>📈 View Project Statistics</summary>
+### 📈 Project Statistics
 
 <br>
 
@@ -506,8 +494,6 @@ pie title US Population Distribution by Region
     "Northeast" : 21
 ```
 
-</details>
-
 <br>
 
 ---
@@ -516,8 +502,7 @@ pie title US Population Distribution by Region
 
 ## 🎯 Key Features Deep Dive
 
-<details>
-<summary>🗺️ Interactive Map Features</summary>
+### 🗺️ Interactive Map Features
 
 <br>
 
@@ -534,10 +519,9 @@ const colorScale = d3.scaleSequential()
     .interpolator(d3.interpolateRgb("#e8f0fe", "#0071e3"));
 ```
 
-</details>
+<br>
 
-<details>
-<summary>📊 Chart Features</summary>
+### 📊 Chart Features
 
 <br>
 
@@ -548,10 +532,9 @@ const colorScale = d3.scaleSequential()
 | **Line Chart** | Trend analysis | 5-year data, smooth curves |
 | **Radar Chart** | Multi-dimensional | Regional comparison, 6 metrics |
 
-</details>
+<br>
 
-<details>
-<summary>🎨 Design Features</summary>
+### 🎨 Design Features
 
 <br>
 
@@ -561,8 +544,6 @@ const colorScale = d3.scaleSequential()
 - **Smooth Animations**: `cubic-bezier(0.4, 0, 0.2, 1)`
 - **Micro-interactions**: Hover states, transitions
 - **Number Animations**: Count-up effects on load
-
-</details>
 
 <br>
 
@@ -654,8 +635,7 @@ graph LR
 
 <br>
 
-<details>
-<summary>📝 Contribution Guidelines</summary>
+### 📝 Contribution Guidelines
 
 <br>
 
@@ -679,8 +659,6 @@ graph LR
 - Explain the use case
 - Provide mockups if possible
 
-</details>
-
 <br>
 
 ---
@@ -689,8 +667,7 @@ graph LR
 
 ## 📋 Roadmap
 
-<details>
-<summary>🚀 Future Enhancements</summary>
+### 🚀 Future Enhancements
 
 <br>
 
@@ -704,8 +681,6 @@ graph LR
 - [ ] 💾 Save favorite states
 - [ ] 🔔 Data update notifications
 - [ ] 🌐 Multi-language support
-
-</details>
 
 <br>
 
